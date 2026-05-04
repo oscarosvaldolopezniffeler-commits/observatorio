@@ -10,19 +10,18 @@
   header { background: #fff; border-bottom: 1px solid #e0e0de; padding: 1rem 2rem; display: flex; align-items: baseline; gap: 1rem; }
   header h1 { font-size: 18px; font-weight: 500; }
   header p { font-size: 13px; color: #666; }
-  main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+  main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
   .card { background: #fff; border-radius: 8px; border: 1px solid #e0e0de; padding: 1rem 1.25rem; }
   .card-label { font-size: 12px; color: #888; margin-bottom: 4px; }
   .card-val { font-size: 22px; font-weight: 500; }
   .tabs { display: flex; gap: 0; border-bottom: 1px solid #e0e0de; margin-bottom: 1.25rem; }
-  .tab { padding: 8px 20px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 400; }
+  .tab { padding: 8px 20px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .tab.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; font-weight: 500; }
   .tab:hover { color: #1a1a1a; }
   .filters { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
   .filters input, .filters select { padding: 7px 10px; font-size: 13px; border-radius: 6px; border: 1px solid #d0d0ce; background: #fff; color: #1a1a1a; outline: none; }
   .filters input { flex: 1; min-width: 200px; }
-  .filters input:focus, .filters select:focus { border-color: #888; }
   .table-wrap { background: #fff; border-radius: 8px; border: 1px solid #e0e0de; overflow: hidden; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { padding: 10px 14px; text-align: left; font-weight: 500; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e0e0de; background: #fafafa; white-space: nowrap; }
@@ -32,9 +31,12 @@
   .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #e8f0fe; color: #1a56db; }
   .muted { color: #888; }
   .price { font-weight: 500; }
+  .price-act { font-weight: 600; color: #166534; }
+  .coef { font-size: 11px; color: #888; }
   .empty { text-align: center; padding: 3rem; color: #aaa; font-size: 13px; }
   .count { font-size: 12px; color: #888; margin-top: 8px; }
-  footer { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #aaa; border-top: 1px solid #e0e0de; margin-top: 2rem; }
+  .iop-badge { display: inline-block; background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 500; margin-left: 8px; }
+  footer { max-width: 1400px; margin: 0 auto; padding: 1rem 2rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #aaa; border-top: 1px solid #e0e0de; margin-top: 2rem; }
   footer a { color: #1a56db; text-decoration: none; }
   .panel { display: none; }
   .panel.active { display: block; }
@@ -47,6 +49,7 @@
 <header>
   <h1>Observatorio de Precios</h1>
   <p>Obra Pública · Provincia de Córdoba</p>
+  <span id="iop-header"></span>
 </header>
 
 <main>
@@ -58,7 +61,8 @@
       <div class="card"><div class="card-label">Precios registrados</div><div class="card-val" id="stat-precios">0</div></div>
       <div class="card"><div class="card-label">Ítems normalizados</div><div class="card-val" id="stat-items">0</div></div>
       <div class="card"><div class="card-label">Departamentos</div><div class="card-val" id="stat-deptos">0</div></div>
-      <div class="card"><div class="card-label">Último registro</div><div class="card-val" id="stat-fecha" style="font-size:15px;padding-top:4px">-</div></div>
+      <div class="card"><div class="card-label">Índice IOP actual</div><div class="card-val" id="stat-iop">-</div></div>
+      <div class="card"><div class="card-label">Período IOP actual</div><div class="card-val" id="stat-iop-fecha" style="font-size:15px;padding-top:4px">-</div></div>
     </div>
 
     <div class="tabs">
@@ -76,7 +80,15 @@
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>N° Ítem</th><th>Nombre</th><th>Unidad</th><th>Precio unitario</th><th>Fecha</th><th>Obra / Fuente</th><th>Expediente</th><th>Departamento</th>
+            <th>N° Ítem</th>
+            <th>Nombre</th>
+            <th>Unidad</th>
+            <th>Precio original</th>
+            <th>Fecha</th>
+            <th>Coef. IOP</th>
+            <th>Precio actualizado</th>
+            <th>Obra / Fuente</th>
+            <th>Departamento</th>
           </tr></thead>
           <tbody id="tbody-precios"></tbody>
         </table>
@@ -96,7 +108,7 @@
     <div id="panel-indices" class="panel">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Fecha</th><th>Índice IOP</th><th>Variación mensual %</th><th>Fuente</th></tr></thead>
+          <thead><tr><th>Período</th><th>Índice IOP (promedio)</th><th>Variación mensual %</th><th>Fuente</th></tr></thead>
           <tbody id="tbody-indices"></tbody>
         </table>
       </div>
@@ -115,6 +127,8 @@ const CSV_ITEMS   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr
 const CSV_INDICES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=138102468&single=true&output=csv";
 
 let DATA = { precios: [], items: [], indices: [] };
+let IOP_MAP = {}; // { "03/2026": 14021.83 }
+let IOP_ACTUAL = { fecha: "-", valor: 0 };
 
 function parseCSV(text) {
   const lines = text.trim().split("\n");
@@ -139,21 +153,64 @@ function splitLine(line) {
   return cols.map(c => c.trim());
 }
 
+async function fetchCSV(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("No se pudo leer: " + url);
+  return parseCSV(await r.text());
+}
+
+function parseNum(s) {
+  if (!s) return NaN;
+  return parseFloat(String(s).replace(/\./g,"").replace(",","."));
+}
+
 function fmt(n) {
-  const str = String(n).trim();
-  const num = parseFloat(str);
-  if (isNaN(num)) return str || "-";
+  const num = typeof n === "number" ? n : parseNum(n);
+  if (isNaN(num)) return "-";
   return "$ " + num.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function fmtCoef(n) {
+  if (isNaN(n) || n === 0) return "-";
+  return n.toFixed(4) + "x";
 }
 
 function esc(s) {
   return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }
 
-async function fetchCSV(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("No se pudo leer: " + url);
-  return parseCSV(await r.text());
+function buildIopMap() {
+  IOP_MAP = {};
+  DATA.indices.forEach(r => {
+    const fecha = r["FECHA"] || r["INDICE IOP"] || "";
+    const val = parseNum(r["INDICE IOP"] || r["VARIACION MENSUAL %"] || "");
+    // buscar columna correcta
+    const keys = Object.keys(r);
+    const fechaKey = keys[0];
+    const valKey = keys[1];
+    const f = (r[fechaKey]||"").trim();
+    const v = parseNum(r[valKey]);
+    if (f && !isNaN(v)) IOP_MAP[f] = v;
+  });
+  // Encontrar el más reciente
+  const fechas = Object.keys(IOP_MAP);
+  if (fechas.length > 0) {
+    // ordenar por año/mes
+    fechas.sort((a, b) => {
+      const [ma, ya] = a.split("/").map(Number);
+      const [mb, yb] = b.split("/").map(Number);
+      return (ya*100+ma) - (yb*100+mb);
+    });
+    const ultima = fechas[fechas.length - 1];
+    IOP_ACTUAL = { fecha: ultima, valor: IOP_MAP[ultima] };
+  }
+}
+
+function getCoef(fechaPrecio) {
+  if (!fechaPrecio || !IOP_ACTUAL.valor) return NaN;
+  const iopBase = IOP_MAP[fechaPrecio.trim()];
+  if (!iopBase) return NaN;
+  return IOP_ACTUAL.valor / iopBase;
 }
 
 function showTab(name) {
@@ -188,21 +245,32 @@ function renderPrecios() {
 
   const tbody = document.getElementById("tbody-precios");
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
     document.getElementById("count-precios").textContent = "";
     return;
   }
-  tbody.innerHTML = filtered.map(r => `
-    <tr>
+
+  tbody.innerHTML = filtered.map(r => {
+    const precioOrig = parseNum(r["PRECIO UNITARIO"]);
+    const coef = getCoef(r["FECHA PRECIO"]);
+    const precioAct = !isNaN(coef) ? precioOrig * coef : NaN;
+    const coefStr = !isNaN(coef) ? fmtCoef(coef) : '<span class="muted">-</span>';
+    const actStr = !isNaN(precioAct)
+      ? `<span class="price-act">${fmt(precioAct)}</span>`
+      : `<span class="muted">-</span>`;
+    return `<tr>
       <td><span class="badge">${esc(r["N° ITEM"])}</span></td>
       <td>${esc(r["NOMBRE ITEM"])}</td>
       <td class="muted">${esc(r["UNIDAD"])}</td>
-      <td class="price">${fmt(r["PRECIO UNITARIO"])}</td>
+      <td class="price">${fmt(precioOrig)}</td>
       <td class="muted">${esc(r["FECHA PRECIO"])}</td>
+      <td class="coef">${coefStr}</td>
+      <td>${actStr}</td>
       <td>${esc(r["OBRA/FUENTE"])}</td>
-      <td class="muted">${esc(r["EXPEDIENTE"])}</td>
       <td>${esc(r["DEPARTAMENTO"])}</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
+
   document.getElementById("count-precios").textContent = filtered.length + " registro" + (filtered.length !== 1 ? "s" : "");
 }
 
@@ -224,22 +292,27 @@ function renderIndices() {
   if (DATA.indices.length === 0) {
     tbody.innerHTML = `<tr><td colspan="4" class="empty">Sin datos. Cargá los índices IOP en la hoja INDICES.</td></tr>`; return;
   }
-  tbody.innerHTML = DATA.indices.map(r => `
-    <tr>
-      <td>${esc(r["FECHA"])}</td>
-      <td class="price">${esc(r["INDICE IOP"])}</td>
-      <td>${esc(r["VARIACION MENSUAL %"])}%</td>
-      <td>${esc(r["FUENTE"])}</td>
-    </tr>`).join("");
+  tbody.innerHTML = DATA.indices.map(r => {
+    const keys = Object.keys(r);
+    return `<tr>
+      <td>${esc(r[keys[0]])}</td>
+      <td class="price">${esc(r[keys[1]])}</td>
+      <td>${esc(r[keys[2]])}</td>
+      <td class="muted">${esc(r[keys[3]])}</td>
+    </tr>`;
+  }).join("");
 }
 
 function updateStats() {
-  const fechas = [...new Set(DATA.precios.map(r => r["FECHA PRECIO"]).filter(Boolean))].sort().reverse();
   const deptos = [...new Set(DATA.precios.map(r => r["DEPARTAMENTO"]).filter(Boolean))];
   document.getElementById("stat-precios").textContent = DATA.precios.length;
   document.getElementById("stat-items").textContent   = DATA.items.length;
   document.getElementById("stat-deptos").textContent  = deptos.length;
-  document.getElementById("stat-fecha").textContent   = fechas[0] || "-";
+  document.getElementById("stat-iop").textContent     = IOP_ACTUAL.valor ? IOP_ACTUAL.valor.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+  document.getElementById("stat-iop-fecha").textContent = IOP_ACTUAL.fecha;
+  if (IOP_ACTUAL.fecha !== "-") {
+    document.getElementById("iop-header").innerHTML = `<span class="iop-badge">IOP ${IOP_ACTUAL.fecha}</span>`;
+  }
 }
 
 async function init() {
@@ -248,6 +321,7 @@ async function init() {
     DATA.precios  = p;
     DATA.items    = it;
     DATA.indices  = idx;
+    buildIopMap();
     document.getElementById("loading").style.display = "none";
     document.getElementById("app").style.display = "block";
     updateStats();
