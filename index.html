@@ -140,8 +140,9 @@ function splitLine(line) {
 }
 
 function fmt(n) {
-  const num = parseFloat(String(n).replace(/\./g,"").replace(",","."));
-  if (isNaN(num)) return n || "-";
+  const str = String(n).trim();
+  const num = parseFloat(str);
+  if (isNaN(num)) return str || "-";
   return "$ " + num.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
