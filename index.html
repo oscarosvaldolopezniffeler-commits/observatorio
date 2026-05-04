@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Observatorio de Precios — Obra Pública Córdoba</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 14px; }
+  header { background: #fff; border-bottom: 1px solid #e0e0de; padding: 1rem 2rem; display: flex; align-items: baseline; gap: 1rem; }
+  header h1 { font-size: 18px; font-weight: 500; }
+  header p { font-size: 13px; color: #666; }
+  main { max-width: 1200px; margin: 0 auto; padding: 1.5rem 2rem; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+  .card { background: #fff; border-radius: 8px; border: 1px solid #e0e0de; padding: 1rem 1.25rem; }
+  .card-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .card-val { font-size: 22px; font-weight: 500; }
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid #e0e0de; margin-bottom: 1.25rem; }
+  .tab { padding: 8px 20px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 400; }
+  .tab.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; font-weight: 500; }
+  .tab:hover { color: #1a1a1a; }
+  .filters { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .filters input, .filters select { padding: 7px 10px; font-size: 13px; border-radius: 6px; border: 1px solid #d0d0ce; background: #fff; color: #1a1a1a; outline: none; }
+  .filters input { flex: 1; min-width: 200px; }
+  .filters input:focus, .filters select:focus { border-color: #888; }
+  .table-wrap { background: #fff; border-radius: 8px; border: 1px solid #e0e0de; overflow: hidden; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 14px; text-align: left; font-weight: 500; font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #e0e0de; background: #fafafa; white-space: nowrap; }
+  td { padding: 9px 14px; border-bottom: 1px solid #f0f0ee; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; background: #e8f0fe; color: #1a56db; }
+  .muted { color: #888; }
+  .price { font-weight: 500; }
+  .empty { text-align: center; padding: 3rem; color: #aaa; font-size: 13px; }
+  .count { font-size: 12px; color: #888; margin-top: 8px; }
+  footer { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #aaa; border-top: 1px solid #e0e0de; margin-top: 2rem; }
+  footer a { color: #1a56db; text-decoration: none; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  #loading { text-align: center; padding: 3rem; color: #888; }
+  #error-msg { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 1rem 1.25rem; color: #b91c1c; margin-bottom: 1rem; display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Observatorio de Precios</h1>
+  <p>Obra Pública · Provincia de Córdoba</p>
+</header>
+
+<main>
+  <div id="error-msg"></div>
+  <div id="loading">Cargando datos...</div>
+
+  <div id="app" style="display:none">
+    <div class="cards">
+      <div class="card"><div class="card-label">Precios registrados</div><div class="card-val" id="stat-precios">0</div></div>
+      <div class="card"><div class="card-label">Ítems normalizados</div><div class="card-val" id="stat-items">0</div></div>
+      <div class="card"><div class="card-label">Departamentos</div><div class="card-val" id="stat-deptos">0</div></div>
+      <div class="card"><div class="card-label">Último registro</div><div class="card-val" id="stat-fecha" style="font-size:15px;padding-top:4px">-</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('precios')">Precios</button>
+      <button class="tab" onclick="showTab('items')">Ítems normalizados</button>
+      <button class="tab" onclick="showTab('indices')">Índices IOP</button>
+    </div>
+
+    <div id="panel-precios" class="panel active">
+      <div class="filters">
+        <input type="text" id="search" placeholder="Buscar por nombre o número de ítem..." oninput="renderPrecios()">
+        <select id="filter-depto" onchange="renderPrecios()"><option value="">Todos los departamentos</option></select>
+        <select id="filter-fecha" onchange="renderPrecios()"><option value="">Todas las fechas</option></select>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>N° Ítem</th><th>Nombre</th><th>Unidad</th><th>Precio unitario</th><th>Fecha</th><th>Obra / Fuente</th><th>Expediente</th><th>Departamento</th>
+          </tr></thead>
+          <tbody id="tbody-precios"></tbody>
+        </table>
+      </div>
+      <div class="count" id="count-precios"></div>
+    </div>
+
+    <div id="panel-items" class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>N° Ítem</th><th>Nombre</th><th>Unidad</th></tr></thead>
+          <tbody id="tbody-items"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="panel-indices" class="panel">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Índice IOP</th><th>Variación mensual %</th><th>Fuente</th></tr></thead>
+          <tbody id="tbody-indices"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span>Conectado a Google Sheets · Actualización automática</span>
+  <a href="https://docs.google.com/spreadsheets/d/1EV5kChmcYeaXwQbrMyjeas2i8R45QdmF34Xb88wx-dw" target="_blank">Abrir planilla →</a>
+</footer>
+
+<script>
+const CSV_PRECIOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=0&single=true&output=csv";
+const CSV_ITEMS   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=611738023&single=true&output=csv";
+const CSV_INDICES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=138102468&single=true&output=csv";
+
+let DATA = { precios: [], items: [], indices: [] };
+
+function parseCSV(text) {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return [];
+  const headers = splitLine(lines[0]);
+  return lines.slice(1).map(l => {
+    const cols = splitLine(l);
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (cols[i] || "").trim());
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ""));
+}
+
+function splitLine(line) {
+  const cols = []; let cur = "", inQ = false;
+  for (let c of line) {
+    if (c === '"') { inQ = !inQ; continue; }
+    if (c === ',' && !inQ) { cols.push(cur); cur = ""; continue; }
+    cur += c;
+  }
+  cols.push(cur);
+  return cols.map(c => c.trim());
+}
+
+function fmt(n) {
+  const num = parseFloat(String(n).replace(/\./g,"").replace(",","."));
+  if (isNaN(num)) return n || "-";
+  return "$ " + num.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+async function fetchCSV(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("No se pudo leer: " + url);
+  return parseCSV(await r.text());
+}
+
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach((t,i) => {
+    const names = ["precios","items","indices"];
+    t.classList.toggle("active", names[i] === name);
+  });
+  document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("panel-" + name).classList.add("active");
+}
+
+function populateFilters() {
+  const deptos = [...new Set(DATA.precios.map(r => r["DEPARTAMENTO"]).filter(Boolean))].sort();
+  const fechas = [...new Set(DATA.precios.map(r => r["FECHA PRECIO"]).filter(Boolean))].sort().reverse();
+  const sd = document.getElementById("filter-depto");
+  const sf = document.getElementById("filter-fecha");
+  deptos.forEach(d => { const o = document.createElement("option"); o.value = d; o.text = d; sd.appendChild(o); });
+  fechas.forEach(f => { const o = document.createElement("option"); o.value = f; o.text = f; sf.appendChild(o); });
+}
+
+function renderPrecios() {
+  const search = document.getElementById("search").value.toLowerCase();
+  const depto  = document.getElementById("filter-depto").value;
+  const fecha  = document.getElementById("filter-fecha").value;
+
+  const filtered = DATA.precios.filter(r => {
+    const ms = !search || (r["NOMBRE ITEM"]||"").toLowerCase().includes(search) || (r["N° ITEM"]||"").includes(search);
+    const md = !depto  || r["DEPARTAMENTO"] === depto;
+    const mf = !fecha  || r["FECHA PRECIO"] === fecha;
+    return ms && md && mf;
+  });
+
+  const tbody = document.getElementById("tbody-precios");
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
+    document.getElementById("count-precios").textContent = "";
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `
+    <tr>
+      <td><span class="badge">${esc(r["N° ITEM"])}</span></td>
+      <td>${esc(r["NOMBRE ITEM"])}</td>
+      <td class="muted">${esc(r["UNIDAD"])}</td>
+      <td class="price">${fmt(r["PRECIO UNITARIO"])}</td>
+      <td class="muted">${esc(r["FECHA PRECIO"])}</td>
+      <td>${esc(r["OBRA/FUENTE"])}</td>
+      <td class="muted">${esc(r["EXPEDIENTE"])}</td>
+      <td>${esc(r["DEPARTAMENTO"])}</td>
+    </tr>`).join("");
+  document.getElementById("count-precios").textContent = filtered.length + " registro" + (filtered.length !== 1 ? "s" : "");
+}
+
+function renderItems() {
+  const tbody = document.getElementById("tbody-items");
+  if (DATA.items.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="3" class="empty">Sin datos en la hoja ITEMS.</td></tr>`; return;
+  }
+  tbody.innerHTML = DATA.items.map(r => `
+    <tr>
+      <td><span class="badge">${esc(r["N° ITEM"])}</span></td>
+      <td>${esc(r["NOMBRE ITEM"])}</td>
+      <td class="muted">${esc(r["UNIDAD"])}</td>
+    </tr>`).join("");
+}
+
+function renderIndices() {
+  const tbody = document.getElementById("tbody-indices");
+  if (DATA.indices.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">Sin datos. Cargá los índices IOP en la hoja INDICES.</td></tr>`; return;
+  }
+  tbody.innerHTML = DATA.indices.map(r => `
+    <tr>
+      <td>${esc(r["FECHA"])}</td>
+      <td class="price">${esc(r["INDICE IOP"])}</td>
+      <td>${esc(r["VARIACION MENSUAL %"])}%</td>
+      <td>${esc(r["FUENTE"])}</td>
+    </tr>`).join("");
+}
+
+function updateStats() {
+  const fechas = [...new Set(DATA.precios.map(r => r["FECHA PRECIO"]).filter(Boolean))].sort().reverse();
+  const deptos = [...new Set(DATA.precios.map(r => r["DEPARTAMENTO"]).filter(Boolean))];
+  document.getElementById("stat-precios").textContent = DATA.precios.length;
+  document.getElementById("stat-items").textContent   = DATA.items.length;
+  document.getElementById("stat-deptos").textContent  = deptos.length;
+  document.getElementById("stat-fecha").textContent   = fechas[0] || "-";
+}
+
+async function init() {
+  try {
+    const [p, it, idx] = await Promise.all([fetchCSV(CSV_PRECIOS), fetchCSV(CSV_ITEMS), fetchCSV(CSV_INDICES)]);
+    DATA.precios  = p;
+    DATA.items    = it;
+    DATA.indices  = idx;
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    updateStats();
+    populateFilters();
+    renderPrecios();
+    renderItems();
+    renderIndices();
+  } catch(e) {
+    document.getElementById("loading").style.display = "none";
+    const err = document.getElementById("error-msg");
+    err.style.display = "block";
+    err.textContent = "Error al cargar datos: " + e.message;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
