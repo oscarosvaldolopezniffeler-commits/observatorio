@@ -147,9 +147,7 @@
 </div>
 
 <script>
-const CSV_PRECIOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=0&single=true&output=csv";
-const CSV_ITEMS   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=611738023&single=true&output=csv";
-const CSV_INDICES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=138102468&single=true&output=csv";
+const API = "https://script.google.com/macros/s/AKfycbwesReRUCBkB3dGe9DC4y_UwIbX3fguH0SBTPguBtnbXTJOl5YPiHnjJgQeArzAhVR0yQ/exec";
 
 let DATA = { precios: [], items: [], indices: [] };
 let IOP_MAP = {};
@@ -178,10 +176,17 @@ function splitLine(line) {
   return cols.map(c => c.trim());
 }
 
-async function fetchCSV(url) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error("No se pudo leer: " + url);
-  return parseCSV(await r.text());
+async function fetchSheet(sheetName) {
+  const r = await fetch(`${API}?sheet=${encodeURIComponent(sheetName)}`);
+  if (!r.ok) throw new Error("No se pudo leer: " + sheetName);
+  const raw = await r.json();
+  if (!raw || raw.length < 2) return [];
+  const headers = raw[0].map(h => String(h).trim());
+  return raw.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = row[i] !== undefined ? String(row[i]).trim() : "");
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ""));
 }
 
 function parseNum(s) {
@@ -350,7 +355,7 @@ function updateStats() {
 
 async function init() {
   try {
-    const [p, it, idx] = await Promise.all([fetchCSV(CSV_PRECIOS), fetchCSV(CSV_ITEMS), fetchCSV(CSV_INDICES)]);
+    const [p, it, idx] = await Promise.all([fetchSheet("PRECIOS"), fetchSheet("ITEMS"), fetchSheet("INDICES")]);
     DATA.precios = p; DATA.items = it; DATA.indices = idx;
     buildIopMap();
     document.getElementById("loading").style.display = "none";
