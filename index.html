@@ -103,7 +103,6 @@
             <th>Coef. IOP</th>
             <th>Precio actualizado</th>
             <th>Obra / Fuente</th>
-            <th>Expediente</th>
             <th>Departamento</th>
           </tr></thead>
           <tbody id="tbody-precios"></tbody>
@@ -204,7 +203,14 @@ function fmt(n) {
   return "$ " + num.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-function fmtCoef(n) {
+function formatFecha(s) {
+  if (!s) return "-";
+  // Si viene en formato ISO: 2026-03-01T03:00:00.000Z → extraer mes y año
+  const isoMatch = s.match(/^(\d{4})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[2]}/${isoMatch[1]}`;
+  // Si ya viene en formato MM/YYYY → devolver tal cual
+  return s.trim();
+}
   if (isNaN(n) || n === 0) return "-";
   return n.toFixed(4) + "x";
 }
@@ -293,8 +299,8 @@ function renderPrecios() {
   }
 
   tbody.innerHTML = filtered.map(r => {
-    const precioOrig = parseNum(r["PRECIO UNITARIO"]);
-    const coef = getCoef(r["FECHA PRECIO"]);
+    const fechaFormateada = formatFecha(r["FECHA PRECIO"]);
+    const coef = getCoef(fechaFormateada);
     const precioAct = !isNaN(coef) ? precioOrig * coef : NaN;
     const coefStr = !isNaN(coef) ? fmtCoef(coef) : '<span class="muted">-</span>';
     const actStr = !isNaN(precioAct) ? `<span class="price-act">${fmt(precioAct)}</span>` : `<span class="muted">-</span>`;
@@ -308,11 +314,10 @@ function renderPrecios() {
       <td>${nombreCell}</td>
       <td class="muted">${esc(r["UNIDAD"])}</td>
       <td class="price">${fmt(precioOrig)}</td>
-      <td class="muted">${esc(r["FECHA PRECIO"])}</td>
+      <td class="muted">${fechaFormateada}</td>
       <td class="coef">${coefStr}</td>
       <td>${actStr}</td>
       <td>${esc(r["OBRA/FUENTE"])}</td>
-      <td class="muted">${esc(r["EXPEDIENTE"])}</td>
       <td>${esc(r["DEPARTAMENTO"])}</td>
     </tr>`;
   }).join("");
