@@ -7,15 +7,16 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f3; color: #1a1a1a; font-size: 14px; }
-  header { background: #fff; border-bottom: 1px solid #e0e0de; padding: 1rem 2rem; display: flex; align-items: baseline; gap: 1rem; }
+  header { background: #fff; border-bottom: 1px solid #e0e0de; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
   header h1 { font-size: 18px; font-weight: 500; }
   header p { font-size: 13px; color: #666; }
+  .iop-badge { background: #dcfce7; color: #166534; border-radius: 4px; padding: 3px 10px; font-size: 12px; font-weight: 500; margin-left: auto; }
   main { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
   .card { background: #fff; border-radius: 8px; border: 1px solid #e0e0de; padding: 1rem 1.25rem; }
   .card-label { font-size: 12px; color: #888; margin-bottom: 4px; }
   .card-val { font-size: 22px; font-weight: 500; }
-  .tabs { display: flex; gap: 0; border-bottom: 1px solid #e0e0de; margin-bottom: 1.25rem; }
+  .tabs { display: flex; border-bottom: 1px solid #e0e0de; margin-bottom: 1.25rem; }
   .tab { padding: 8px 20px; font-size: 13px; cursor: pointer; border: none; background: transparent; color: #888; border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .tab.active { color: #1a1a1a; border-bottom: 2px solid #1a1a1a; font-weight: 500; }
   .tab:hover { color: #1a1a1a; }
@@ -35,13 +36,27 @@
   .coef { font-size: 11px; color: #888; }
   .empty { text-align: center; padding: 3rem; color: #aaa; font-size: 13px; }
   .count { font-size: 12px; color: #888; margin-top: 8px; }
-  .iop-badge { display: inline-block; background: #dcfce7; color: #166534; border-radius: 4px; padding: 2px 8px; font-size: 11px; font-weight: 500; margin-left: 8px; }
   footer { max-width: 1400px; margin: 0 auto; padding: 1rem 2rem 2rem; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #aaa; border-top: 1px solid #e0e0de; margin-top: 2rem; }
   footer a { color: #1a56db; text-decoration: none; }
   .panel { display: none; }
   .panel.active { display: block; }
   #loading { text-align: center; padding: 3rem; color: #888; }
   #error-msg { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 1rem 1.25rem; color: #b91c1c; margin-bottom: 1rem; display: none; }
+
+  /* Tooltip / popup de notas */
+  .info-btn { background: none; border: none; cursor: pointer; color: #1a56db; font-size: 14px; padding: 0 4px; line-height: 1; vertical-align: middle; }
+  .info-btn:hover { color: #1440a0; }
+  .nota-cell { display: flex; align-items: center; gap: 4px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 10px; padding: 1.5rem; max-width: 520px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; }
+  .modal-title { font-size: 14px; font-weight: 500; margin-bottom: 0.75rem; color: #1a1a1a; line-height: 1.4; }
+  .modal-body { font-size: 13px; color: #444; line-height: 1.7; }
+  .modal-body span { display: inline-block; background: #f0f4ff; border-radius: 4px; padding: 2px 8px; margin: 2px 3px 2px 0; font-size: 12px; color: #1a56db; }
+  .modal-close { position: absolute; top: 12px; right: 14px; background: none; border: none; font-size: 18px; cursor: pointer; color: #888; line-height: 1; }
+  .modal-close:hover { color: #1a1a1a; }
 </style>
 </head>
 <body>
@@ -62,7 +77,7 @@
       <div class="card"><div class="card-label">Ítems normalizados</div><div class="card-val" id="stat-items">0</div></div>
       <div class="card"><div class="card-label">Departamentos</div><div class="card-val" id="stat-deptos">0</div></div>
       <div class="card"><div class="card-label">Índice IOP actual</div><div class="card-val" id="stat-iop">-</div></div>
-      <div class="card"><div class="card-label">Período IOP actual</div><div class="card-val" id="stat-iop-fecha" style="font-size:15px;padding-top:4px">-</div></div>
+      <div class="card"><div class="card-label">Período IOP</div><div class="card-val" id="stat-iop-fecha" style="font-size:15px;padding-top:4px">-</div></div>
     </div>
 
     <div class="tabs">
@@ -88,6 +103,7 @@
             <th>Coef. IOP</th>
             <th>Precio actualizado</th>
             <th>Obra / Fuente</th>
+            <th>Expediente</th>
             <th>Departamento</th>
           </tr></thead>
           <tbody id="tbody-precios"></tbody>
@@ -121,13 +137,22 @@
   <a href="https://docs.google.com/spreadsheets/d/1EV5kChmcYeaXwQbrMyjeas2i8R45QdmF34Xb88wx-dw" target="_blank">Abrir planilla →</a>
 </footer>
 
+<!-- Modal de notas -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
 <script>
 const CSV_PRECIOS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=0&single=true&output=csv";
 const CSV_ITEMS   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=611738023&single=true&output=csv";
 const CSV_INDICES = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRjZgxvYqSr9BOOdueoZXjPTt2rLTjGMfSy9kZpcs6jlMXIHZjWXM5AO_rUn09HtxPMbF4jH9eG_hBq/pub?gid=138102468&single=true&output=csv";
 
 let DATA = { precios: [], items: [], indices: [] };
-let IOP_MAP = {}; // { "03/2026": 14021.83 }
+let IOP_MAP = {};
 let IOP_ACTUAL = { fecha: "-", valor: 0 };
 
 function parseCSV(text) {
@@ -182,26 +207,18 @@ function esc(s) {
 function buildIopMap() {
   IOP_MAP = {};
   DATA.indices.forEach(r => {
-    const fecha = r["FECHA"] || r["INDICE IOP"] || "";
-    const val = parseNum(r["INDICE IOP"] || r["VARIACION MENSUAL %"] || "");
-    // buscar columna correcta
     const keys = Object.keys(r);
-    const fechaKey = keys[0];
-    const valKey = keys[1];
-    const f = (r[fechaKey]||"").trim();
-    const v = parseNum(r[valKey]);
+    const f = (r[keys[0]]||"").trim();
+    const v = parseNum(r[keys[1]]);
     if (f && !isNaN(v)) IOP_MAP[f] = v;
   });
-  // Encontrar el más reciente
-  const fechas = Object.keys(IOP_MAP);
+  const fechas = Object.keys(IOP_MAP).sort((a,b) => {
+    const [ma,ya] = a.split("/").map(Number);
+    const [mb,yb] = b.split("/").map(Number);
+    return (ya*100+ma)-(yb*100+mb);
+  });
   if (fechas.length > 0) {
-    // ordenar por año/mes
-    fechas.sort((a, b) => {
-      const [ma, ya] = a.split("/").map(Number);
-      const [mb, yb] = b.split("/").map(Number);
-      return (ya*100+ma) - (yb*100+mb);
-    });
-    const ultima = fechas[fechas.length - 1];
+    const ultima = fechas[fechas.length-1];
     IOP_ACTUAL = { fecha: ultima, valor: IOP_MAP[ultima] };
   }
 }
@@ -215,12 +232,28 @@ function getCoef(fechaPrecio) {
 
 function showTab(name) {
   document.querySelectorAll(".tab").forEach((t,i) => {
-    const names = ["precios","items","indices"];
-    t.classList.toggle("active", names[i] === name);
+    t.classList.toggle("active", ["precios","items","indices"][i] === name);
   });
   document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-  document.getElementById("panel-" + name).classList.add("active");
+  document.getElementById("panel-"+name).classList.add("active");
 }
+
+function openModal(nombre, nota) {
+  document.getElementById("modal-title").textContent = nombre;
+  // Convertir el texto de nota en chips separados por ·
+  const partes = nota.split(/[·+]/).map(s => s.trim()).filter(Boolean);
+  const body = partes.map(p => `<span>${esc(p)}</span>`).join(" ");
+  document.getElementById("modal-body").innerHTML = body;
+  document.getElementById("modal-overlay").classList.add("open");
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById("modal-overlay") || e.currentTarget.classList.contains("modal-close")) {
+    document.getElementById("modal-overlay").classList.remove("open");
+  }
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal({target: document.getElementById("modal-overlay")}); });
 
 function populateFilters() {
   const deptos = [...new Set(DATA.precios.map(r => r["DEPARTAMENTO"]).filter(Boolean))].sort();
@@ -245,7 +278,7 @@ function renderPrecios() {
 
   const tbody = document.getElementById("tbody-precios");
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
     document.getElementById("count-precios").textContent = "";
     return;
   }
@@ -255,18 +288,22 @@ function renderPrecios() {
     const coef = getCoef(r["FECHA PRECIO"]);
     const precioAct = !isNaN(coef) ? precioOrig * coef : NaN;
     const coefStr = !isNaN(coef) ? fmtCoef(coef) : '<span class="muted">-</span>';
-    const actStr = !isNaN(precioAct)
-      ? `<span class="price-act">${fmt(precioAct)}</span>`
-      : `<span class="muted">-</span>`;
+    const actStr = !isNaN(precioAct) ? `<span class="price-act">${fmt(precioAct)}</span>` : `<span class="muted">-</span>`;
+    const nota = (r["NOTAS"]||"").trim();
+    const nombre = esc(r["NOMBRE ITEM"]);
+    const nombreCell = nota
+      ? `<div class="nota-cell">${nombre}<button class="info-btn" onclick="openModal('${nombre.replace(/'/g,"\\'")}','${nota.replace(/'/g,"\\'")}')" title="Ver detalle">ⓘ</button></div>`
+      : nombre;
     return `<tr>
       <td><span class="badge">${esc(r["N° ITEM"])}</span></td>
-      <td>${esc(r["NOMBRE ITEM"])}</td>
+      <td>${nombreCell}</td>
       <td class="muted">${esc(r["UNIDAD"])}</td>
       <td class="price">${fmt(precioOrig)}</td>
       <td class="muted">${esc(r["FECHA PRECIO"])}</td>
       <td class="coef">${coefStr}</td>
       <td>${actStr}</td>
       <td>${esc(r["OBRA/FUENTE"])}</td>
+      <td class="muted">${esc(r["EXPEDIENTE"])}</td>
       <td>${esc(r["DEPARTAMENTO"])}</td>
     </tr>`;
   }).join("");
@@ -276,9 +313,7 @@ function renderPrecios() {
 
 function renderItems() {
   const tbody = document.getElementById("tbody-items");
-  if (DATA.items.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" class="empty">Sin datos en la hoja ITEMS.</td></tr>`; return;
-  }
+  if (DATA.items.length === 0) { tbody.innerHTML = `<tr><td colspan="3" class="empty">Sin datos.</td></tr>`; return; }
   tbody.innerHTML = DATA.items.map(r => `
     <tr>
       <td><span class="badge">${esc(r["N° ITEM"])}</span></td>
@@ -289,9 +324,7 @@ function renderItems() {
 
 function renderIndices() {
   const tbody = document.getElementById("tbody-indices");
-  if (DATA.indices.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" class="empty">Sin datos. Cargá los índices IOP en la hoja INDICES.</td></tr>`; return;
-  }
+  if (DATA.indices.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="empty">Sin datos.</td></tr>`; return; }
   tbody.innerHTML = DATA.indices.map(r => {
     const keys = Object.keys(r);
     return `<tr>
@@ -308,7 +341,7 @@ function updateStats() {
   document.getElementById("stat-precios").textContent = DATA.precios.length;
   document.getElementById("stat-items").textContent   = DATA.items.length;
   document.getElementById("stat-deptos").textContent  = deptos.length;
-  document.getElementById("stat-iop").textContent     = IOP_ACTUAL.valor ? IOP_ACTUAL.valor.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+  document.getElementById("stat-iop").textContent     = IOP_ACTUAL.valor ? IOP_ACTUAL.valor.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}) : "-";
   document.getElementById("stat-iop-fecha").textContent = IOP_ACTUAL.fecha;
   if (IOP_ACTUAL.fecha !== "-") {
     document.getElementById("iop-header").innerHTML = `<span class="iop-badge">IOP ${IOP_ACTUAL.fecha}</span>`;
@@ -318,9 +351,7 @@ function updateStats() {
 async function init() {
   try {
     const [p, it, idx] = await Promise.all([fetchCSV(CSV_PRECIOS), fetchCSV(CSV_ITEMS), fetchCSV(CSV_INDICES)]);
-    DATA.precios  = p;
-    DATA.items    = it;
-    DATA.indices  = idx;
+    DATA.precios = p; DATA.items = it; DATA.indices = idx;
     buildIopMap();
     document.getElementById("loading").style.display = "none";
     document.getElementById("app").style.display = "block";
