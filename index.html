@@ -153,9 +153,15 @@ async function fetchSheet(sheetName) {
   const raw = await r.json();
   if (!raw || raw.length < 2) return [];
   const headers = raw[0].map(h => String(h).trim());
+  // Ignorar columna PRECIO ACTUALIZADO si existe (la calculamos nosotros)
+  const ignorar = ["PRECIO ACTUALIZADO"];
   return raw.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i] !== undefined ? String(row[i]).trim() : "");
+    headers.forEach((h, i) => {
+      if (!ignorar.includes(h)) {
+        obj[h] = row[i] !== undefined ? String(row[i]).trim() : "";
+      }
+    });
     return obj;
   }).filter(r => Object.values(r).some(v => v !== ""));
 }
