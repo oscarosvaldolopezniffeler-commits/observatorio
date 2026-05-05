@@ -191,7 +191,11 @@ async function fetchSheet(sheetName) {
 
 function parseNum(s) {
   if (!s) return NaN;
-  return parseFloat(String(s).replace(/\./g,"").replace(",","."));
+  const str = String(s).trim();
+  // Si tiene coma como decimal (formato argentino: 1.234,56) → convertir
+  if (/\d+\.\d{3},\d+/.test(str)) return parseFloat(str.replace(/\./g,"").replace(",","."));
+  // Si ya tiene punto como decimal (formato estándar: 1234.56) → usar directo
+  return parseFloat(str.replace(/,/g,""));
 }
 
 function fmt(n) {
