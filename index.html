@@ -42,13 +42,9 @@
   .panel.active { display: block; }
   #loading { text-align: center; padding: 3rem; color: #888; }
   #error-msg { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 1rem 1.25rem; color: #b91c1c; margin-bottom: 1rem; display: none; }
-
-  /* Tooltip / popup de notas */
   .info-btn { background: none; border: none; cursor: pointer; color: #1a56db; font-size: 14px; padding: 0 4px; line-height: 1; vertical-align: middle; }
   .info-btn:hover { color: #1440a0; }
   .nota-cell { display: flex; align-items: center; gap: 4px; }
-
-  /* Modal */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 1000; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: #fff; border-radius: 10px; padding: 1.5rem; max-width: 520px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.18); position: relative; }
@@ -136,7 +132,6 @@
   <a href="https://docs.google.com/spreadsheets/d/1EV5kChmcYeaXwQbrMyjeas2i8R45QdmF34Xb88wx-dw" target="_blank">Abrir planilla →</a>
 </footer>
 
-<!-- Modal de notas -->
 <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">×</button>
@@ -151,29 +146,6 @@ const API = "https://script.google.com/macros/s/AKfycbwesReRUCBkB3dGe9DC4y_UwIbX
 let DATA = { precios: [], items: [], indices: [] };
 let IOP_MAP = {};
 let IOP_ACTUAL = { fecha: "-", valor: 0 };
-
-function parseCSV(text) {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return [];
-  const headers = splitLine(lines[0]);
-  return lines.slice(1).map(l => {
-    const cols = splitLine(l);
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = (cols[i] || "").trim());
-    return obj;
-  }).filter(r => Object.values(r).some(v => v !== ""));
-}
-
-function splitLine(line) {
-  const cols = []; let cur = "", inQ = false;
-  for (let c of line) {
-    if (c === '"') { inQ = !inQ; continue; }
-    if (c === ',' && !inQ) { cols.push(cur); cur = ""; continue; }
-    cur += c;
-  }
-  cols.push(cur);
-  return cols.map(c => c.trim());
-}
 
 async function fetchSheet(sheetName) {
   const r = await fetch(`${API}?sheet=${encodeURIComponent(sheetName)}`);
@@ -191,10 +163,15 @@ async function fetchSheet(sheetName) {
 function parseNum(s) {
   if (!s) return NaN;
   const str = String(s).trim();
-  // Si tiene coma como decimal (formato argentino: 1.234,56) → convertir
   if (/\d+\.\d{3},\d+/.test(str)) return parseFloat(str.replace(/\./g,"").replace(",","."));
-  // Si ya tiene punto como decimal (formato estándar: 1234.56) → usar directo
   return parseFloat(str.replace(/,/g,""));
+}
+
+function formatFecha(s) {
+  if (!s) return "-";
+  const iso = s.match(/^(\d{4})-(\d{2})/);
+  if (iso) return `${iso[2]}/${iso[1]}`;
+  return s.trim();
 }
 
 function fmt(n) {
@@ -203,14 +180,7 @@ function fmt(n) {
   return "$ " + num.toLocaleString("es-AR", {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-function formatFecha(s) {
-  if (!s) return "-";
-  // Si viene en formato ISO: 2026-03-01T03:00:00.000Z → extraer mes y año
-  const isoMatch = s.match(/^(\d{4})-(\d{2})/);
-  if (isoMatch) return `${isoMatch[2]}/${isoMatch[1]}`;
-  // Si ya viene en formato MM/YYYY → devolver tal cual
-  return s.trim();
-}
+function fmtCoef(n) {
   if (isNaN(n) || n === 0) return "-";
   return n.toFixed(4) + "x";
 }
@@ -223,9 +193,9 @@ function buildIopMap() {
   IOP_MAP = {};
   DATA.indices.forEach(r => {
     const keys = Object.keys(r);
-    const f = (r[keys[0]]||"").trim();
+    const f = formatFecha((r[keys[0]]||"").trim());
     const v = parseNum(r[keys[1]]);
-    if (f && !isNaN(v)) IOP_MAP[f] = v;
+    if (f && f !== "-" && !isNaN(v)) IOP_MAP[f] = v;
   });
   const fechas = Object.keys(IOP_MAP).sort((a,b) => {
     const [ma,ya] = a.split("/").map(Number);
@@ -255,10 +225,8 @@ function showTab(name) {
 
 function openModal(nombre, nota) {
   document.getElementById("modal-title").textContent = nombre;
-  // Convertir el texto de nota en chips separados por ·
   const partes = nota.split(/[·+]/).map(s => s.trim()).filter(Boolean);
-  const body = partes.map(p => `<span>${esc(p)}</span>`).join(" ");
-  document.getElementById("modal-body").innerHTML = body;
+  document.getElementById("modal-body").innerHTML = partes.map(p => `<span>${esc(p)}</span>`).join(" ");
   document.getElementById("modal-overlay").classList.add("open");
 }
 
@@ -268,11 +236,17 @@ function closeModal(e) {
   }
 }
 
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal({target: document.getElementById("modal-overlay")}); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.getElementById("modal-overlay").classList.remove("open");
+});
 
 function populateFilters() {
   const deptos = [...new Set(DATA.precios.map(r => r["DEPARTAMENTO"]).filter(Boolean))].sort();
-  const fechas = [...new Set(DATA.precios.map(r => r["FECHA PRECIO"]).filter(Boolean))].sort().reverse();
+  const fechas = [...new Set(DATA.precios.map(r => formatFecha(r["FECHA PRECIO"])).filter(f => f && f !== "-"))].sort((a,b) => {
+    const [ma,ya] = a.split("/").map(Number);
+    const [mb,yb] = b.split("/").map(Number);
+    return (yb*100+mb)-(ya*100+ma);
+  });
   const sd = document.getElementById("filter-depto");
   const sf = document.getElementById("filter-fecha");
   deptos.forEach(d => { const o = document.createElement("option"); o.value = d; o.text = d; sd.appendChild(o); });
@@ -285,22 +259,24 @@ function renderPrecios() {
   const fecha  = document.getElementById("filter-fecha").value;
 
   const filtered = DATA.precios.filter(r => {
+    const f = formatFecha(r["FECHA PRECIO"]);
     const ms = !search || (r["NOMBRE ITEM"]||"").toLowerCase().includes(search) || (r["N° ITEM"]||"").includes(search);
     const md = !depto  || r["DEPARTAMENTO"] === depto;
-    const mf = !fecha  || r["FECHA PRECIO"] === fecha;
+    const mf = !fecha  || f === fecha;
     return ms && md && mf;
   });
 
   const tbody = document.getElementById("tbody-precios");
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">Sin datos. Cargá precios en la hoja PRECIOS de tu planilla.</td></tr>`;
     document.getElementById("count-precios").textContent = "";
     return;
   }
 
   tbody.innerHTML = filtered.map(r => {
-    const fechaFormateada = formatFecha(r["FECHA PRECIO"]);
-    const coef = getCoef(fechaFormateada);
+    const precioOrig = parseNum(r["PRECIO UNITARIO"]);
+    const fechaFmt = formatFecha(r["FECHA PRECIO"]);
+    const coef = getCoef(fechaFmt);
     const precioAct = !isNaN(coef) ? precioOrig * coef : NaN;
     const coefStr = !isNaN(coef) ? fmtCoef(coef) : '<span class="muted">-</span>';
     const actStr = !isNaN(precioAct) ? `<span class="price-act">${fmt(precioAct)}</span>` : `<span class="muted">-</span>`;
@@ -314,7 +290,7 @@ function renderPrecios() {
       <td>${nombreCell}</td>
       <td class="muted">${esc(r["UNIDAD"])}</td>
       <td class="price">${fmt(precioOrig)}</td>
-      <td class="muted">${fechaFormateada}</td>
+      <td class="muted">${fechaFmt}</td>
       <td class="coef">${coefStr}</td>
       <td>${actStr}</td>
       <td>${esc(r["OBRA/FUENTE"])}</td>
@@ -342,7 +318,7 @@ function renderIndices() {
   tbody.innerHTML = DATA.indices.map(r => {
     const keys = Object.keys(r);
     return `<tr>
-      <td>${esc(r[keys[0]])}</td>
+      <td>${formatFecha(esc(r[keys[0]]))}</td>
       <td class="price">${esc(r[keys[1]])}</td>
       <td>${esc(r[keys[2]])}</td>
       <td class="muted">${esc(r[keys[3]])}</td>
@@ -355,7 +331,8 @@ function updateStats() {
   document.getElementById("stat-precios").textContent = DATA.precios.length;
   document.getElementById("stat-items").textContent   = DATA.items.length;
   document.getElementById("stat-deptos").textContent  = deptos.length;
-  document.getElementById("stat-iop").textContent     = IOP_ACTUAL.valor ? IOP_ACTUAL.valor.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}) : "-";
+  document.getElementById("stat-iop").textContent     = IOP_ACTUAL.valor
+    ? IOP_ACTUAL.valor.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}) : "-";
   document.getElementById("stat-iop-fecha").textContent = IOP_ACTUAL.fecha;
   if (IOP_ACTUAL.fecha !== "-") {
     document.getElementById("iop-header").innerHTML = `<span class="iop-badge">IOP ${IOP_ACTUAL.fecha}</span>`;
@@ -364,7 +341,9 @@ function updateStats() {
 
 async function init() {
   try {
-    const [p, it, idx] = await Promise.all([fetchSheet("PRECIOS"), fetchSheet("ITEMS"), fetchSheet("INDICES")]);
+    const [p, it, idx] = await Promise.all([
+      fetchSheet("PRECIOS"), fetchSheet("ITEMS"), fetchSheet("INDICES")
+    ]);
     DATA.precios = p; DATA.items = it; DATA.indices = idx;
     buildIopMap();
     document.getElementById("loading").style.display = "none";
