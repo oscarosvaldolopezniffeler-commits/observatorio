@@ -85,6 +85,7 @@
     <div id="panel-precios" class="panel active">
       <div class="filters">
         <input type="text" id="search" placeholder="Buscar por nombre o número de ítem..." oninput="renderPrecios()">
+        <select id="filter-organismo" onchange="renderPrecios()"><option value="">Todos los organismos</option></select>
         <select id="filter-depto" onchange="renderPrecios()"><option value="">Todos los departamentos</option></select>
         <select id="filter-fecha" onchange="renderPrecios()"><option value="">Todas las fechas</option></select>
       </div>
@@ -99,6 +100,7 @@
             <th>Coef. IOP</th>
             <th>Precio actualizado</th>
             <th>Obra / Fuente</th>
+            <th>Organismo</th>
             <th>Departamento</th>
           </tr></thead>
           <tbody id="tbody-precios"></tbody>
@@ -247,16 +249,19 @@ document.addEventListener("keydown", e => {
 });
 
 function populateFilters() {
+  const organismos = [...new Set(DATA.precios.map(r => r["ORGANISMO"]).filter(Boolean))].sort();
   const deptos = [...new Set(DATA.precios.map(r => r["DEPARTAMENTO"]).filter(Boolean))].sort();
   const fechas = [...new Set(DATA.precios.map(r => formatFecha(r["FECHA PRECIO"])).filter(f => f && f !== "-"))].sort((a,b) => {
     const [ma,ya] = a.split("/").map(Number);
     const [mb,yb] = b.split("/").map(Number);
     return (yb*100+mb)-(ya*100+ma);
   });
+  const so = document.getElementById("filter-organismo");
   const sd = document.getElementById("filter-depto");
   const sf = document.getElementById("filter-fecha");
-  deptos.forEach(d => { const o = document.createElement("option"); o.value = d; o.text = d; sd.appendChild(o); });
-  fechas.forEach(f => { const o = document.createElement("option"); o.value = f; o.text = f; sf.appendChild(o); });
+  organismos.forEach(o => { const el = document.createElement("option"); el.value = o; el.text = o; so.appendChild(el); });
+  deptos.forEach(d => { const el = document.createElement("option"); el.value = d; el.text = d; sd.appendChild(el); });
+  fechas.forEach(f => { const el = document.createElement("option"); el.value = f; el.text = f; sf.appendChild(el); });
 }
 
 function renderPrecios() {
@@ -267,9 +272,10 @@ function renderPrecios() {
   const filtered = DATA.precios.filter(r => {
     const f = formatFecha(r["FECHA PRECIO"]);
     const ms = !search || (r["NOMBRE ITEM"]||"").toLowerCase().includes(search) || (r["N° ITEM"]||"").includes(search);
+    const mo = !document.getElementById("filter-organismo").value || r["ORGANISMO"] === document.getElementById("filter-organismo").value;
     const md = !depto  || r["DEPARTAMENTO"] === depto;
     const mf = !fecha  || f === fecha;
-    return ms && md && mf;
+    return ms && mo && md && mf;
   });
 
   const tbody = document.getElementById("tbody-precios");
@@ -300,6 +306,7 @@ function renderPrecios() {
       <td class="coef">${coefStr}</td>
       <td>${actStr}</td>
       <td>${esc(r["OBRA/FUENTE"])}</td>
+      <td class="muted">${esc(r["ORGANISMO"])}</td>
       <td>${esc(r["DEPARTAMENTO"])}</td>
     </tr>`;
   }).join("");
